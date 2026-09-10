@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # -------------------------------------------------------------
-# NEURAL COPILOT // LINUX & MACOS RUNTIME BOOTLOADER
+# POCKET COPILOT // LINUX & MACOS RUNTIME BOOTLOADER
 # -------------------------------------------------------------
 
 echo "[1/2] Checking and initializing Ollama local daemon..."
@@ -16,6 +16,6 @@ if ! curl -s http://localhost:11434 &> /dev/null; then
     sleep 2
 fi
 
-echo "[2/2] Launching Neural Command Core Workspace..."
+echo "[2/2] Launching Pocket Copilot Workspace..."
 cd "$(dirname "$0")" || exit
 python3 assistant_gui.py

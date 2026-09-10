@@ -18,7 +18,7 @@ Persona Guidelines:
 class CyberWorkspace:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"NEURAL COMMAND CORE [{MODEL_NAME}]")
+        self.root.title(f"POCKET COPILOT [{MODEL_NAME}]")
         self.root.geometry("1080x740")
         self.root.minsize(950, 600)
         self.root.configure(bg="#08090c")
@@ -38,7 +38,7 @@ class CyberWorkspace:
         left_brand.pack(side="left", padx=20, pady=10)
 
         tk.Label(
-            left_brand, text="◆ NEURAL_OS // TERMINAL CORE", 
+            left_brand, text="◆ POCKET COPILOT // TERMINAL CORE", 
             font=("Consolas", 11, "bold"), fg="#00e5ff", bg="#0d1117"
         ).pack(side="left")
 
@@ -158,7 +158,7 @@ class CyberWorkspace:
         )
         self.stop_btn.pack(side="bottom", fill="x")
 
-        self.print_log("sys_note", f"[CORE BOOTED]: Operator verified. Neural bus synchronized with {MODEL_NAME}.\n")
+        self.print_log("sys_note", f"[POCKET COPILOT ONLINE]: Operator verified. Neural bus synchronized with {MODEL_NAME}.\n")
 
         # Daemon telemetry thread
         threading.Thread(target=self.poll_telemetry, daemon=True).start()

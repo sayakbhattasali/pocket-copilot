@@ -1,14 +1,20 @@
-# ⚡ NEURAL COMMAND CORE // TERMINAL_OS
+# ⚡ POCKET COPILOT
 
 <div align="center">
 
 ```text
-  ███╗   ██╗███████╗██╗   ██╗██████╗  █████╗ ██╗         ██████╗ ███████╗
-  ████╗  ██║██╔════╝██║   ██║██╔══██╗██╔══██╗██║        ██╔═══██╗██╔════╝
-  ██╔██╗ ██║█████╗  ██║   ██║██████╔╝███████║██║        ██║   ██║███████╗
-  ██║╚██╗██║██╔══╝  ██║   ██║██╔══██╗██╔══██║██║        ██║   ██║╚════██║
-  ██║ ╚████║███████╗╚██████╔╝██║  ██║██║  ██║███████╗   ╚██████╔╝███████║
-  ╚═╝  ╚═══╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝    ╚═════╝ ╚══════╝
+  ██████╗  ██████╗  ██████╗██╗  ██╗███████╗████████╗
+  ██╔══██╗██╔═══██╗██╔════╝██║ ██╔╝██╔════╝╚══██╔══╝
+  ██████╔╝██║   ██║██║     █████═╝ █████╗     ██║   
+  ██╔═══╝ ██║   ██║██║     ██╔═██╗ ██╔══╝     ██║   
+  ██║     ╚██████╔╝╚██████╗██║ ╚██╗███████╗   ██║   
+  ╚═╝      ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝   ╚═╝   
+   ██████╗  ██████╗ ██████╗ ██╗██╗      ██████╗ ████████╗
+  ██╔════╝ ██╔═══██╗██╔══██╗██║██║     ██╔═══██╗╚══██╔══╝
+  ██║      ██║   ██║██████╔╝██║██║     ██║   ██║   ██║   
+  ██║      ██║   ██║██╔═══╝ ██║██║     ██║   ██║   ██║   
+  ╚██████╗ ╚██████╔╝██║     ██║███████╗╚██████╔╝   ██║   
+   ╚═════╝  ╚═════╝ ╚═╝     ╚═╝╚══════╝ ╚═════╝    ╚═╝   
 ```
 
 **An air-gapped, cyberpunk-styled local AI engineering copilot & system telemetry console.**  
@@ -43,9 +49,9 @@
 
 ## 🌐 Overview
 
-**Neural Command Core** is a lightweight, zero-latency desktop AI copilot engineered for software developers, algorithmic problem solvers, and system engineers. Designed with a dark cyberpunk terminal interface, it runs completely on your local machine using **Ollama**—ensuring **zero data leakage**, **no cloud subscription fees**, and **uncompromised speed**.
+**Pocket Copilot** is a lightweight, zero-latency desktop AI copilot engineered for software developers, algorithmic problem solvers, and system engineers. Designed with a dark cyberpunk terminal interface, it runs completely on your local machine using **Ollama**—ensuring **zero data leakage**, **no cloud subscription fees**, and **uncompromised speed**.
 
-Unlike bulky web wrappers or heavy Electron apps, Neural Command Core is built natively in Python with zero frontend framework overhead.
+Unlike bulky web wrappers or heavy Electron apps, Pocket Copilot is built natively in Python with zero frontend framework overhead.
 
 ---
 
@@ -116,8 +122,8 @@ Ensure you have the following installed on your host system:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/neural-command-core.git
-cd neural-command-core
+git clone https://github.com/sayakbhattasali/pocket-copilot.git
+cd pocket-copilot
 ```
 
 ### 2. Install Python Dependencies
@@ -182,7 +188,7 @@ To switch models:
 ## 📁 Project Structure
 
 ```text
-native-ai/
+pocket-copilot/
 ├── .gitignore              # Ignores bytecode, caches, logs, environments, and OS artifacts
 ├── .gitattributes          # Enforces consistent line endings across platforms
 ├── assistant_gui.py        # Core Tkinter Cyberpunk GUI, streaming loop & telemetry bus

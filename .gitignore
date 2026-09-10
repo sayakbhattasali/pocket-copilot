@@ -1,0 +1,28 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.spec
+
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# OS / File Explorer metadata
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE configurations
+.vscode/
+.idea/
+
+# Local media / state leftovers
+*.db
+*.sqlite3
+*.wav
+*.mp3
+*.jpg
+*.jpeg
+*.png

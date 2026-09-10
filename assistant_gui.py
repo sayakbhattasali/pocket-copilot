@@ -6,13 +6,28 @@ import time
 import psutil
 import ollama
 
-MODEL_NAME = "qwen2.5-coder:1.5b"
+# Safe import: runs offline even if ddgs / duckduckgo_search isn't installed
+try:
+    from ddgs import DDGS
+    DDG_AVAILABLE = True
+except ImportError:
+    try:
+        from duckduckgo_search import DDGS
+        DDG_AVAILABLE = True
+    except ImportError:
+        DDG_AVAILABLE = False
+
+MODEL_NAME = "qwen2.5-coder:3b"
 
 SYSTEM_DIRECTIVE = """You are a high-tier AI engineer and systems assistant.
 Persona Guidelines:
 - Address the operator directly, sharply, and candidly.
 - Specialize in Data Structures & Algorithms, full-stack architectures, performance optimization, and systems debugging.
-- Output clean, production-ready code with concise, punchy technical rationale.
+- Output clean, minimal, production-ready code with concise technical rationale when code is requested.
+- If the operator asks a factual, conceptual, or general question (e.g., "who is...", "what is..."), answer directly in concise natural prose. Never write code or API wrappers unless explicitly requested.
+- For Data Structures & Algorithms (DSA) or algorithmic questions: Provide ONLY standard library data structures and pure functions/classes. NEVER wrap algorithmic tasks in web frameworks (FastAPI, Flask, etc.) or HTTP servers.
+- When FastAPI or Pydantic is explicitly relevant: Enforce modern standards (FastAPI `lifespan` context managers, Pydantic V2 `@field_validator` with `@classmethod`).
+- When live web context is provided, prioritize verified context over internal training weights.
 - Avoid generic corporate filler, apologies, or redundant pleasantries."""
 
 class CyberWorkspace:
@@ -121,17 +136,39 @@ class CyberWorkspace:
         self.display.tag_config("ai_tag", foreground="#39d353", font=("Consolas", 10, "bold"))
         self.display.tag_config("ai_body", foreground="#c9d1d9", font=("Consolas", 10))
         self.display.tag_config("sys_note", foreground="#484f58", font=("Consolas", 9, "italic"))
+        self.display.tag_config("web_note", foreground="#e3b341", font=("Consolas", 9, "bold"))
         self.display.tag_config("abort_note", foreground="#ff4444", font=("Consolas", 9, "bold"))
         self.display.tag_config("div", foreground="#161b22")
 
         # ---------------- INPUT DOCK ----------------
         tk.Frame(chat_pane, bg="#1b1f27", height=1).pack(fill="x")
 
-        dock = tk.Frame(chat_pane, bg="#0d1117", padx=16, pady=14)
+        dock = tk.Frame(chat_pane, bg="#0d1117", padx=16, pady=12)
         dock.pack(fill="x", side="bottom")
 
+        # Utility Control Strip (Web Toggle)
+        control_strip = tk.Frame(dock, bg="#0d1117")
+        control_strip.pack(fill="x", side="top", pady=(0, 6))
+
+        self.web_search_var = tk.BooleanVar(value=False)
+        self.chk_web = tk.Checkbutton(
+            control_strip, text="🌐 WEB AUGMENTATION (LIVE DDG SEARCH)",
+            variable=self.web_search_var,
+            font=("Consolas", 8, "bold"), fg="#8b949e", selectcolor="#161b22",
+            activebackground="#0d1117", activeforeground="#00e5ff",
+            bg="#0d1117", cursor="hand2"
+        )
+        self.chk_web.pack(side="left")
+
+        if not DDG_AVAILABLE:
+            self.chk_web.config(state="disabled", text="🌐 WEB SEARCH (pip install duckduckgo-search)")
+
+        # Main Input Row
+        input_row = tk.Frame(dock, bg="#0d1117")
+        input_row.pack(fill="x", side="bottom")
+
         self.input_box = tk.Text(
-            dock, height=3, font=("Consolas", 10),
+            input_row, height=3, font=("Consolas", 10),
             bg="#161b22", fg="#f0f6fc", insertbackground="#00e5ff",
             bd=1, relief="solid", highlightthickness=0, padx=10, pady=8
         )
@@ -141,7 +178,7 @@ class CyberWorkspace:
         self.input_box.focus()
 
         # Action Buttons Dock (Transmit + Abort)
-        btn_container = tk.Frame(dock, bg="#0d1117")
+        btn_container = tk.Frame(input_row, bg="#0d1117")
         btn_container.pack(side="right", fill="y")
 
         self.send_btn = tk.Button(
@@ -168,6 +205,50 @@ class CyberWorkspace:
         self.telemetry_active = False
         self.stop_stream_flag.set()
         self.root.destroy()
+
+    def fetch_web_snippets(self, query, max_results=3):
+        """Scrapes DuckDuckGo enforcing global English technical documentation."""
+        try:
+            from ddgs import DDGS
+        except ImportError:
+            try:
+                from duckduckgo_search import DDGS
+            except ImportError:
+                return ""
+
+        try:
+            # Strip conversational filler to ensure clean keyword targeting
+            cleaned = query.strip(' "\'')
+            for prefix in ["how do you ", "how to ", "what is ", "can you "]:
+                if cleaned.lower().startswith(prefix):
+                    cleaned = cleaned[len(prefix):]
+
+            with DDGS(timeout=10) as ddgs:
+                results = list(ddgs.text(
+                    cleaned, 
+                    region="wt-wt", 
+                    safesearch="moderate", 
+                    max_results=max_results,
+                    backend="lite"
+                ))
+
+                if not results:
+                    results = list(ddgs.text(cleaned, region="wt-wt", max_results=max_results))
+
+                if not results:
+                    return ""
+
+                formatted = []
+                for i, r in enumerate(results, 1):
+                    title = r.get("title", "Doc")
+                    body = r.get("body", "")
+                    href = r.get("href", "")
+                    formatted.append(f"[{i}] {title}\nURL: {href}\nSNIPPET: {body}")
+                return "\n\n".join(formatted)
+
+        except Exception as e:
+            print(f"[SEARCH ERROR]: {e}")
+            return ""
 
     def inject_prompt(self, template):
         self.input_box.delete("1.0", tk.END)
@@ -203,12 +284,48 @@ class CyberWorkspace:
         self.display.see(tk.END)
         self.display.config(state="disabled")
 
-    def finish_ai_stream(self, was_aborted=False):
+    def copy_to_clipboard(self, text, btn):
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(text.strip())
+            self.root.update()
+            btn.config(text="[COPIED!]", fg="#39d353")
+            self.root.after(1600, lambda: btn.config(text="[COPY REPLY]", fg="#58a6ff") if btn.winfo_exists() else None)
+        except Exception as e:
+            print(f"[Clipboard Error]: {e}")
+
+    def finish_ai_stream(self, was_aborted=False, response_text=""):
         self.display.config(state="normal")
         if was_aborted:
-            self.display.insert(tk.END, "\n[STREAM ABORTED BY OPERATOR]\n\n", "abort_note")
+            self.display.insert(tk.END, "\n[STREAM ABORTED BY OPERATOR]\n", "abort_note")
         else:
+            self.display.insert(tk.END, "\n")
+
+        if response_text.strip():
+            self.display.insert(tk.END, "\n")
+            copy_btn = tk.Button(
+                self.display,
+                text="[COPY REPLY]",
+                font=("Consolas", 8, "bold"),
+                bg="#161b22",
+                fg="#58a6ff",
+                activebackground="#21262d",
+                activeforeground="#79c0ff",
+                relief="flat",
+                bd=0,
+                padx=8,
+                pady=3,
+                cursor="hand2"
+            )
+            copy_btn.config(command=lambda t=response_text, b=copy_btn: self.copy_to_clipboard(t, b))
+            copy_btn.bind("<Enter>", lambda e, b=copy_btn: b.config(bg="#21262d", fg="#79c0ff") if b.winfo_exists() and "COPIED" not in b.cget("text") else None)
+            copy_btn.bind("<Leave>", lambda e, b=copy_btn: b.config(bg="#161b22", fg="#58a6ff") if b.winfo_exists() and "COPIED" not in b.cget("text") else None)
+            
+            self.display.window_create(tk.END, window=copy_btn)
             self.display.insert(tk.END, "\n\n")
+        else:
+            self.display.insert(tk.END, "\n")
+
         self.display.see(tk.END)
         self.display.config(state="disabled")
 
@@ -218,10 +335,11 @@ class CyberWorkspace:
             return "break"
 
     def clear_chat(self):
-        self.messages = [self.messages[0]]
+        self.messages = [{"role": "system", "content": SYSTEM_DIRECTIVE}]
         self.display.config(state="normal")
         self.display.delete("1.0", tk.END)
         self.display.config(state="disabled")
+        print("[CONTEXT PURGED]: Message buffer is clean.")
         self.print_log("sys_note", "[SYSTEM]: Local buffer flushed. Ready.\n")
 
     def abort_generation(self):
@@ -235,25 +353,67 @@ class CyberWorkspace:
 
         self.input_box.delete("1.0", tk.END)
         self.append_user_message(content)
-        self.messages.append({"role": "user", "content": content})
 
+        use_web = self.web_search_var.get()
         self.stop_stream_flag.clear()
-        self.send_btn.config(state="disabled", text="STREAMING...", bg="#21262d")
+        self.send_btn.config(state="disabled", text="PROCESSING...", bg="#21262d")
         self.stop_btn.config(state="normal", text="■ ABORT", bg="#da3633", fg="#ffffff")
         
-        threading.Thread(target=self.infer_stream_thread, daemon=True).start()
+        # Notice: NO self.messages.append here!
+        threading.Thread(target=self.infer_stream_thread, args=(content, use_web), daemon=True).start()
 
-    def infer_stream_thread(self):
+    def infer_stream_thread(self, user_content, use_web):
         full_response = ""
         aborted = False
         try:
+            prompt_for_model = user_content
+
+            if use_web:
+                self.root.after(0, lambda: self.send_btn.config(text="SEARCHING..."))
+                web_snippets = self.fetch_web_snippets(user_content, max_results=3)
+
+                print("\n--- SNIPPETS DELIVERED TO MODEL ---")
+                print(web_snippets)
+                print("-----------------------------------\n")
+
+                if web_snippets and not web_snippets.startswith("[Search error"):
+                    self.root.after(0, lambda: self.print_log("web_note", "⚡ [WEB BUS]: Online context retrieved.\n"))
+                    prompt_for_model = f"""CONTEXT:
+{web_snippets}
+
+QUERY:
+{user_content}
+
+INSTRUCTIONS:
+- Answer the QUERY using ONLY the information verified in the CONTEXT above.
+- If the CONTEXT indicates an incumbent change, term end, or recent update, reflect the latest status accurately.
+- Do NOT rely on prior training assumptions or historical defaults when the CONTEXT provides current facts.
+- Provide a direct, factual answer in natural prose without unnecessary code or filler."""
+                else:
+                    self.root.after(0, lambda: self.print_log("sys_note", "⚠️ [WEB BUS]: No search results found. Using local weights.\n"))
+
+            # Build inference message payload
+            if use_web:
+                # Isolate the query to prevent history contamination
+                payload = [
+                    {"role": "system", "content": SYSTEM_DIRECTIVE},
+                    {"role": "user", "content": prompt_for_model}
+                ]
+            else:
+                # Retain conversation history for normal offline chat
+                self.messages.append({"role": "user", "content": user_content})
+                payload = list(self.messages)
+
+            self.root.after(0, lambda: self.send_btn.config(text="STREAMING..."))
             self.root.after(0, self.start_ai_stream)
 
             response_stream = ollama.chat(
                 model=MODEL_NAME,
-                messages=self.messages,
+                messages=payload,
                 options={
-                    "temperature": 0.3,
+                    "temperature": 0.1,
+                    "repeat_penalty": 1.2,    # Penalizes repetitive loops
+                    "repeat_last_n": 64,       # Looks back 64 tokens for repeats
                     "num_ctx": 2048,
                 },
                 keep_alive="5m",
@@ -270,14 +430,21 @@ class CyberWorkspace:
                     full_response += token
                     self.root.after(0, lambda t=token: self.append_stream_token(t))
 
+            # Store the turn in conversation history
+            if use_web:
+                self.messages.append({"role": "user", "content": user_content})
             if full_response.strip():
                 self.messages.append({"role": "assistant", "content": full_response})
-            
-            self.root.after(0, lambda: self.finish_ai_stream(was_aborted=aborted))
+
+            resp_text = full_response
+            self.root.after(0, lambda: self.finish_ai_stream(was_aborted=aborted, response_text=resp_text))
 
         except Exception as e:
             err = f"Stream pipeline fault: {e}"
             self.root.after(0, lambda: self.print_log("sys_note", f"\n[FAULT]: {err}\n"))
+            if full_response.strip():
+                resp_text = full_response
+                self.root.after(0, lambda: self.finish_ai_stream(was_aborted=True, response_text=resp_text))
         finally:
             def reset_buttons():
                 self.send_btn.config(state="normal", text="TRANSMIT\n[ENTER]", bg="#238636")
